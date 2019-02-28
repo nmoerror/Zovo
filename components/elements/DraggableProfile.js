@@ -1,83 +1,241 @@
 import React, { Component } from "react";
 import {
+  Platform,
   StyleSheet,
-  View,
   Text,
-  PanResponder,
+  View,
+  Dimensions,
+  Image,
   Animated,
-  Dimensions
+  PanResponder
 } from "react-native";
 
-export default class DraggableProfile extends Component {
-  constructor(props) {
-    super(props);
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+const SCREN_WIDTH = Dimensions.get("window").width;
 
+const Users = [
+  { id: "1", uri: require("./assets/p1.jpg") },
+  { id: "2", uri: require("./assets/p2.jpg") },
+  { id: "3", uri: require("./assets/p3.jpg") },
+  { id: "4", uri: require("./assets/p4.jpg") },
+  { id: "5", uri: require("./assets/p5.jpg") }
+];
+
+export default class DraggableProfile extends Component {
+  constructor() {
+    super();
+
+    this.position = new Animated.ValueXY();
     this.state = {
-      pan: new Animated.ValueXY()
+      currentIndex: 0
     };
 
-    this.panResponder = PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: Animated.event([
-        null,
+    this.rotate = this.position.x.interpolate({
+      inputRange: [-SCREN_WIDTH / 2, 0, SCREN_WIDTH / 2],
+      outputRange: ["-10deg", "0deg", "10deg"],
+      extrapolate: "clamp"
+    });
+    this.rotateAndTranslate = {
+      transform: [
         {
-          dx: this.state.pan.x,
-          dy: this.state.pan.y
-        }
-      ]),
+          rotate: this.rotate
+        },
+        ...this.position.getTranslateTransform()
+      ]
+    };
+    this.followOpacity = this.position.x.interpolate({
+      inputRange: [-SCREN_WIDTH / 2, 0, SCREN_WIDTH / 2],
+      outputRange: [0, 0, 1],
+      extrapolate: "clamp"
+    });
 
-      onPanResponderRelease: (e, gesture) => {
-        Animated.spring(
-          //Step 1
-          this.state.pan, //Step 2
-          { toValue: { x: 0, y: 0 } } //Step 3
-        ).start();
+    this.ignoreOpacity = this.position.x.interpolate({
+      inputRange: [-SCREN_WIDTH / 2, 0, SCREN_WIDTH / 2],
+      outputRange: [1, 0, 0],
+      extrapolate: "clamp"
+    });
+    this.nextCardOpacity = this.position.x.interpolate({
+      inputRange: [-SCREN_WIDTH / 2, 0, SCREN_WIDTH / 2],
+      outputRange: [1, 0, 1],
+      extrapolate: "clamp"
+    });
+    this.nextCardScale = this.position.x.interpolate({
+      inputRange: [-SCREN_WIDTH / 2, 0, SCREN_WIDTH / 2],
+      outputRange: [1, 0.8, 1],
+      extrapolate: "clamp"
+    });
+  }
+
+  componentWillMount() {
+    this.PanResponder = PanResponder.create({
+      onStartShouldSetPanResponder: (evt, gestureState) => true,
+      onPanResponderMove: (evt, gestureState) => {
+        this.position.setValue({ x: gestureState.dx, y: gestureState.dy });
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx > 120) {
+          Animated.spring(this.position, {
+            toValue: { x: SCREN_WIDTH + 100, y: gestureState.dy }
+          }).start(() => {
+            this.setState({ currentIndex: this.state.currentIndex + 1 }, () => {
+              this.position.setValue({ x: 0, y: 0 });
+            });
+          });
+        } else if (gestureState.dx < -120) {
+          Animated.spring(this.position, {
+            toValue: { x: -SCREN_WIDTH - 100, y: gestureState.dy }
+          }).start(() => {
+            this.setState({ currentIndex: this.state.currentIndex + 1 }, () => {
+              this.position.setValue({ x: 0, y: 0 });
+            });
+          });
+        } else {
+          Animated.spring(this.position, {
+            toValue: { x: 0, y: 0 },
+            friction: 4
+          }).start();
+        }
       }
     });
   }
-  render() {
-    return <View style={styles.mainContainer}>{this.renderDraggable()}</View>;
-  }
 
-  renderDraggable() {
+  renderUsers = () => {
+    return Users.map((item, i) => {
+      if (i < this.state.currentIndex) {
+        return null;
+      } else if (i == this.state.currentIndex) {
+        return (
+          <Animated.View
+            {...this.PanResponder.panHandlers}
+            key={item.id}
+            style={[
+              this.rotateAndTranslate,
+              {
+                height: SCREEN_HEIGHT - 120,
+                width: SCREN_WIDTH,
+                padding: 10,
+                position: "absolute"
+              }
+            ]}
+          >
+            <Animated.View
+              style={{
+                opacity: this.followOpacity,
+                transform: [{ rotate: "-30deg" }],
+                position: "absolute",
+                top: 50,
+                left: 20,
+                zIndex: 1000
+              }}
+            >
+              <Text
+                style={{
+                  borderWidth: 1,
+                  borderColor: "green",
+                  color: "green",
+                  fontSize: 30,
+                  fontWeight: "900",
+                  padding: 10
+                }}
+              >
+                FOLLOW
+              </Text>
+            </Animated.View>
+            <Animated.View
+              style={{
+                opacity: this.ignoreOpacity,
+                transform: [{ rotate: "+30deg" }],
+                position: "absolute",
+                top: 50,
+                right: 20,
+                zIndex: 1000
+              }}
+            >
+              <Text
+                style={{
+                  borderWidth: 1,
+                  borderColor: "red",
+                  color: "red",
+                  fontSize: 30,
+                  fontWeight: "900",
+                  padding: 10
+                }}
+              >
+                IGNORE
+              </Text>
+            </Animated.View>
+
+            <Image
+              style={{
+                flex: 1,
+                height: null,
+                width: null,
+                resizeMode: "cover",
+                borderRadius: 20
+              }}
+              source={item.uri}
+            />
+          </Animated.View>
+        );
+      } else {
+        return (
+          <Animated.View
+            key={item.id}
+            style={[
+              {
+                opacity: this.nextCardOpacity,
+                transform: [{ scale: this.nextCardScale }]
+              },
+              {
+                height: SCREEN_HEIGHT - 120,
+                width: SCREN_WIDTH,
+                padding: 10,
+                position: "absolute"
+              }
+            ]}
+          >
+            <Image
+              style={{
+                flex: 1,
+                height: null,
+                width: null,
+                resizeMode: "cover",
+                borderRadius: 20
+              }}
+              source={item.uri}
+            />
+          </Animated.View>
+        );
+      }
+    }).reverse();
+  };
+
+  render() {
     return (
-      <View style={styles.draggableContainer}>
-        <Animated.View
-          {...this.panResponder.panHandlers}
-          style={[this.state.pan.getLayout(), styles.circle]}
-        >
-          <Text style={styles.text}>TEST</Text>
-        </Animated.View>
+      <View style={{ flex: 1, backgroundColor: "white" }}>
+        <View style={{ height: 60 }} />
+        <View style={{ flex: 1 }}>{this.renderUsers()}</View>
+        <View style={{ height: 60 }} />
       </View>
     );
   }
 }
-let CIRCLE_RADIUS = 36;
-let Window = Dimensions.get("window");
-let styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5FCFF"
   },
-  dropZone: {
-    height: 100,
-    backgroundColor: "#2c3e50"
-  },
-  text: {
-    marginTop: 25,
-    marginLeft: 5,
-    marginRight: 5,
+  welcome: {
+    fontSize: 20,
     textAlign: "center",
-    color: "#fff"
+    margin: 10
   },
-  draggableContainer: {
-    position: "absolute",
-    top: Window.height / 2 - CIRCLE_RADIUS,
-    left: Window.width / 2 - CIRCLE_RADIUS
-  },
-  circle: {
-    backgroundColor: "#1abc9c",
-    width: CIRCLE_RADIUS * 2,
-    height: CIRCLE_RADIUS * 2,
-    borderRadius: CIRCLE_RADIUS
+  instructions: {
+    textAlign: "center",
+    color: "#333333",
+    marginBottom: 5
   }
 });

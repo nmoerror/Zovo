@@ -1,5 +1,4 @@
-# <p align="center"> ![ale](https://user-images.githubusercontent.com/46657905/55661187-cf56ee00-5866-11e9-970d-d8345a141668.png) </p>
-# Zovo
+# <p align="center"> ![A](https://user-images.githubusercontent.com/46657905/55699609-a4fc6080-5a1f-11e9-83c6-a9a93e62fc71.png) <br/> Zovo </p>
 Zovo is a small prototype created to practice React Native, learn its logic and performance on iOS and Android.
 
 ### Features
